@@ -17,6 +17,9 @@ object Prefs {
     fun isRunning(context: Context): Boolean =
         prefs(context).getBoolean("running", false)
 
+    fun status(context: Context): String =
+        prefs(context).getString("status", "idle") ?: "idle"
+
     fun save(context: Context, campaignUrl: String) {
         prefs(context).edit()
             .putString("campaign_url", campaignUrl.trim())
@@ -25,5 +28,9 @@ object Prefs {
 
     fun setRunning(context: Context, running: Boolean) {
         prefs(context).edit().putBoolean("running", running).apply()
+    }
+
+    fun setStatus(context: Context, status: String) {
+        prefs(context).edit().putString("status", status).apply()
     }
 }

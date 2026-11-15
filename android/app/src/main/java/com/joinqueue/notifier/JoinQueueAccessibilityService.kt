@@ -1,6 +1,7 @@
 package com.joinqueue.notifier
 
 import android.accessibilityservice.AccessibilityService
+import android.accessibilityservice.AccessibilityServiceInfo
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
@@ -9,12 +10,13 @@ import android.view.accessibility.AccessibilityEvent
 import kotlin.random.Random
 
 /**
- * Clicks Join Queue repeatedly. Most clicks fail — after each click we wait and
- * check for a real success signal before stopping. Otherwise we retry in 7–13s.
+ * Clicks Join Queue repeatedly in Chrome. Most clicks fail — after each click we
+ * verify real success UI before stopping. Phone notification only on confirmed join.
  */
 class JoinQueueAccessibilityService : AccessibilityService() {
     companion object {
         private const val TAG = "JoinQueueA11y"
+        private const val FIRST_DELAY_MS = 4000L
         private const val POST_CLICK_CHECK_MS = 2500L
         private const val CONFIRM_SUCCESS_MS = 1500L
 
@@ -34,6 +36,15 @@ class JoinQueueAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        serviceInfo = serviceInfo.apply {
+            flags = flags or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+            eventTypes = AccessibilityEvent.TYPES_ALL_MASK
+            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+            notificationTimeout = 100
+        }
         instance = this
         Log.i(TAG, "Accessibility service connected")
         if (Prefs.isRunning(this)) {
@@ -59,14 +70,18 @@ class JoinQueueAccessibilityService : AccessibilityService() {
         busy = false
         attempts = 0
         Prefs.setRunning(this, true)
-        handler.post(loopRunnable)
-        Log.i(TAG, "Click loop started")
+        Prefs.setStatus(this, "Starting — waiting for Chrome to load…")
+        Notifier.updateProgress(this, "Waiting for page…", silent = true)
+        // Give Chrome time to open/load before the first attempt
+        handler.postDelayed(loopRunnable, FIRST_DELAY_MS)
+        Log.i(TAG, "Click loop scheduled (first attempt in ${FIRST_DELAY_MS}ms)")
     }
 
     fun stopLoop() {
         Prefs.setRunning(this, false)
         busy = false
         handler.removeCallbacksAndMessages(null)
+        Prefs.setStatus(this, "Stopped")
         Log.i(TAG, "Click loop stopped")
     }
 
@@ -76,35 +91,30 @@ class JoinQueueAccessibilityService : AccessibilityService() {
         if (!stillRunning() || busy) return
         busy = true
 
-        val root = rootInActiveWindow
-        if (root == null) {
-            Log.w(TAG, "No active window — keep Chrome on the campaign page")
-            busy = false
-            scheduleNextRetry()
-            return
-        }
-
-        // Already joined from a previous attempt that we haven't notified yet
-        if (NodeFinder.looksJoined(root)) {
+        if (NodeFinder.looksJoined(this)) {
             Log.i(TAG, "Success UI already visible — confirming")
+            Prefs.setStatus(this, "Success UI seen — confirming…")
             confirmSuccessThenFinish()
             return
         }
 
-        val joinNode = NodeFinder.findJoinQueueNode(root)
+        val joinNode = NodeFinder.findJoinQueueNode(this)
         if (joinNode == null) {
-            Log.i(TAG, "Join Queue not visible yet — retry later")
+            val summary = NodeFinder.debugSummary(this)
+            Log.i(TAG, "Join Queue not found. Visible: $summary")
+            Prefs.setStatus(this, "Join Queue not found yet. $summary")
+            Notifier.updateProgress(this, "Looking… attempt pending", silent = true)
             busy = false
             scheduleNextRetry()
             return
         }
 
         attempts += 1
-        val clicked = NodeFinder.click(joinNode)
-        Log.i(TAG, "Attempt $attempts: clicked=$clicked — waiting to verify success")
+        Prefs.setStatus(this, "Attempt $attempts: clicking Join Queue")
+        Notifier.updateProgress(this, "Attempt $attempts — clicking…", silent = true)
+        val clicked = NodeFinder.click(this, joinNode)
+        Log.i(TAG, "Attempt $attempts: clicked=$clicked — verifying after delay")
 
-        // After every click: wait for UI to settle, then verify.
-        // Failed joins are normal; only stop when success is confirmed.
         handler.postDelayed({
             if (!stillRunning()) {
                 busy = false
@@ -115,38 +125,37 @@ class JoinQueueAccessibilityService : AccessibilityService() {
     }
 
     private fun verifyAfterClick() {
-        val root = rootInActiveWindow
-        if (NodeFinder.looksJoined(root)) {
+        if (NodeFinder.looksJoined(this)) {
             Log.i(TAG, "Attempt $attempts: success signal seen — confirming")
+            Prefs.setStatus(this, "Attempt $attempts: possible success — confirming…")
             confirmSuccessThenFinish()
             return
         }
 
-        val stillHasJoin = NodeFinder.hasJoinQueue(root)
-        if (stillHasJoin) {
-            Log.i(TAG, "Attempt $attempts: Join Queue still present — join failed, will retry")
+        val stillHasJoin = NodeFinder.hasJoinQueue(this)
+        val msg = if (stillHasJoin) {
+            "Attempt $attempts failed — Join Queue still there, retrying"
         } else {
-            Log.i(
-                TAG,
-                "Attempt $attempts: Join Queue temporarily gone but no success text — treating as failed"
-            )
+            "Attempt $attempts failed — no success UI yet, retrying"
         }
-
+        Log.i(TAG, msg)
+        Prefs.setStatus(this, msg)
+        Notifier.updateProgress(this, "Attempt $attempts failed — retrying", silent = true)
         busy = false
         scheduleNextRetry()
     }
 
     private fun confirmSuccessThenFinish() {
-        // Second read after a short delay so a flicker cannot stop the loop.
         handler.postDelayed({
             if (!stillRunning()) {
                 busy = false
                 return@postDelayed
             }
-            if (NodeFinder.looksJoined(rootInActiveWindow)) {
+            if (NodeFinder.looksJoined(this)) {
                 onJoined()
             } else {
-                Log.i(TAG, "Success not confirmed on second check — keep retrying")
+                Log.i(TAG, "Success not confirmed — keep retrying")
+                Prefs.setStatus(this, "Success not confirmed — keep retrying")
                 busy = false
                 scheduleNextRetry()
             }
@@ -156,7 +165,8 @@ class JoinQueueAccessibilityService : AccessibilityService() {
     private fun scheduleNextRetry() {
         if (!stillRunning()) return
         val delay = 7000L + Random.nextLong(0, 6001)
-        Log.i(TAG, "Next Join Queue attempt in ${delay}ms (attempts so far=$attempts)")
+        Prefs.setStatus(this, "Next try in ${delay / 1000}s (attempts=$attempts)")
+        Log.i(TAG, "Next attempt in ${delay}ms (attempts=$attempts)")
         handler.postDelayed(loopRunnable, delay)
     }
 
@@ -165,7 +175,9 @@ class JoinQueueAccessibilityService : AccessibilityService() {
         joined = true
         busy = false
         stopLoop()
-        Log.i(TAG, "Join confirmed after $attempts attempts — notifying")
+        Prefs.setStatus(this, "Joined after $attempts attempts")
+        Log.i(TAG, "Join confirmed after $attempts attempts")
+        // Only alert notification is the success one
         Notifier.showJoined(this)
         stopService(Intent(this, ClickerForegroundService::class.java))
     }

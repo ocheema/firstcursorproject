@@ -92,7 +92,7 @@ class MainActivity : AppCompatActivity() {
     private fun refreshStatus() {
         val a11y = if (isAccessibilityEnabled()) "Accessibility ON" else "Accessibility OFF"
         val running = if (Prefs.isRunning(this)) "clicker RUNNING" else "clicker idle"
-        binding.statusText.text = "Status: $a11y · $running"
+        binding.statusText.text = "Status: $a11y · $running\n${Prefs.status(this)}"
     }
 
     private fun isAccessibilityEnabled(): Boolean {
