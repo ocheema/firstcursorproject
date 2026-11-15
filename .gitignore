@@ -14,5 +14,6 @@ android/local.properties
 android/*.iml
 android/.idea/
 *.apk
+!android/dist/*.apk
 *.ap_
 *.dex
