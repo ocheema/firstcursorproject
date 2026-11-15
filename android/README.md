@@ -8,9 +8,10 @@ Personal sideload app that runs fully on your phone:
 
 ## Install the APK (no Android Studio needed)
 
-1. On your phone, allow installs from unknown sources / this browser
-2. Download `JoinQueueNotifier-debug.apk` from this PR / agent artifacts
-3. Open the APK and install **JoinQueue Notifier**
+1. On your phone, open this link and download the file:  
+   https://github.com/ocheema/firstcursorproject/raw/cursor/joinqueue-android-e788/android/dist/JoinQueueNotifier-debug.apk
+2. Allow installs from unknown sources / this browser when prompted
+3. Open the downloaded APK and install **JoinQueue Notifier**
 
 ## First-time setup on the phone
 
