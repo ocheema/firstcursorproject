@@ -7,12 +7,13 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
 
+/** Keeps the process alive while the in-app WebView clicker is running. */
 class ClickerForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Notifier.ensureChannel(this)
-        val notification = Notifier.foregroundNotification(this)
+        val notification = Notifier.foregroundNotification(this, "Clicking Join Queue in-app…")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceCompat.startForeground(
                 this,
@@ -23,12 +24,10 @@ class ClickerForegroundService : Service() {
         } else {
             startForeground(Notifier.FG_ID, notification)
         }
-        JoinQueueAccessibilityService.instance?.startLoop()
         return START_STICKY
     }
 
     override fun onDestroy() {
-        JoinQueueAccessibilityService.instance?.stopLoop()
         Prefs.setRunning(this, false)
         super.onDestroy()
     }

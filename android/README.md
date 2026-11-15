@@ -1,41 +1,25 @@
 # JoinQueue Notifier (Android)
 
-Personal sideload app that runs fully on your phone:
-
-1. Uses an **Accessibility Service** to tap **Join Queue** in Chrome
-2. Retries every **~10 seconds (±3 seconds)**
-3. Shows a **phone notification** when it joins
+Personal sideload app. It opens the Feather campaign **inside the app** and clicks **Join Queue** with JavaScript every ~10 seconds (±3 seconds). Most clicks fail; it keeps retrying and only fires a **phone notification when join succeeds**.
 
 ## Download APK
 
-On your phone, open this link and download the file:  
 https://github.com/ocheema/firstcursorproject/raw/cursor/joinqueue-android-e788/android/dist/JoinQueueNotifier-debug.apk
 
-Allow installs from unknown sources when prompted, then install **JoinQueue Notifier**.
+Uninstall any older version first, then install.
 
-## First-time setup
+## How to use
 
 1. Open **JoinQueue Notifier**
-2. If Accessibility is blocked (“controlled by restricted settings”):
-   - **Settings → Apps → JoinQueue Notifier → ⋮ → Allow restricted settings**
-3. Tap **Enable Accessibility access** → turn on **JoinQueue Notifier**
-4. Tap **Open campaign in browser** and log into Feather in Chrome
-5. Return to the app → **Start clicker**
-6. Keep Chrome on the campaign page in the foreground
+2. Log into Feather in the built-in browser (same screen)
+3. Wait until you can see the **Join Queue** button
+4. Tap **Start**
+5. Leave this app open on that page (screen stays on)
 
-When it joins, you get a phone notification and the clicker stops.
-
-## Build from source (optional)
-
-```bash
-cd android
-# create local.properties with: sdk.dir=/path/to/Android/Sdk
-./gradlew assembleDebug
-# APK: app/build/outputs/apk/debug/app-debug.apk
-```
+The status line at the top shows each attempt. A red error under Join Queue on the page means the click landed but join failed — that is expected; it will retry. You only get a notification when join actually succeeds.
 
 ## Notes
 
-- Personal use / sideload only — not Play Store packaged
-- Accessibility permission is required so the app can tap Join Queue in Chrome
-- Leave Chrome visible while waiting; some phones pause background automation
+- No Accessibility permission needed anymore
+- No Gmail / email
+- Personal sideload only

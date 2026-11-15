@@ -1,103 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg"
-    android:fillViewport="true">
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface"
+        android:padding="10dp"
+        android:text="Log in on the page below, then tap Start."
+        android:textColor="@color/ink"
+        android:textSize="13sp" />
+
+    <WebView
+        android:id="@+id/webView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="JoinQueue"
-            android:textColor="@color/ink"
-            android:textSize="34sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Clicks Join Queue on Feather every ~10s (±3s) and notifies you when it joins."
-            android:textColor="@color/muted"
-            android:textSize="15sp" />
-
-        <TextView
-            android:id="@+id/statusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@color/surface"
-            android:padding="12dp"
-            android:text="Status: idle"
-            android:textColor="@color/ink"
-            android:textSize="14sp" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:hint="Campaign URL">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/campaignUrl"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textUri"
-                android:maxLines="3" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Save settings" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/accessibilityButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Enable Accessibility access" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openCampaignButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Open campaign in browser" />
+        android:orientation="horizontal"
+        android:padding="8dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/startButton"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Start clicker" />
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:text="Start" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/stopButton"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Stop clicker"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:text="Stop"
             android:textColor="@color/danger" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="How to use\n1. Enable this app in Accessibility settings (Allow restricted settings if needed)\n2. Open the campaign and stay logged into Feather in Chrome\n3. Tap Start clicker and leave Chrome in the foreground\n4. When it joins, you get a phone notification"
-            android:textColor="@color/muted"
-            android:textSize="13sp" />
     </LinearLayout>
-</ScrollView>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/reloadButton"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Reload campaign page" />
+</LinearLayout>
