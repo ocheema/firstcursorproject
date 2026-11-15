@@ -6,12 +6,18 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
-import android.view.accessibility.AccessibilityNodeInfo
 import kotlin.random.Random
 
+/**
+ * Clicks Join Queue repeatedly. Most clicks fail — after each click we wait and
+ * check for a real success signal before stopping. Otherwise we retry in 7–13s.
+ */
 class JoinQueueAccessibilityService : AccessibilityService() {
     companion object {
         private const val TAG = "JoinQueueA11y"
+        private const val POST_CLICK_CHECK_MS = 2500L
+        private const val CONFIRM_SUCCESS_MS = 1500L
+
         @Volatile
         var instance: JoinQueueAccessibilityService? = null
             private set
@@ -22,20 +28,9 @@ class JoinQueueAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var attempts = 0
     private var joined = false
-    private var scheduled = false
+    private var busy = false
 
-    private val tickRunnable = object : Runnable {
-        override fun run() {
-            if (!Prefs.isRunning(this@JoinQueueAccessibilityService) || joined) {
-                scheduled = false
-                return
-            }
-            tryClick()
-            val delay = 7000L + Random.nextLong(0, 6001)
-            Log.i(TAG, "Next attempt in ${delay}ms")
-            handler.postDelayed(this, delay)
-        }
-    }
+    private val loopRunnable = Runnable { runCycle() }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -46,9 +41,7 @@ class JoinQueueAccessibilityService : AccessibilityService() {
         }
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Loop is timer-driven; events are not required for clicking.
-    }
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
 
     override fun onInterrupt() {
         Log.w(TAG, "Accessibility service interrupted")
@@ -61,93 +54,119 @@ class JoinQueueAccessibilityService : AccessibilityService() {
     }
 
     fun startLoop() {
-        if (scheduled) return
+        handler.removeCallbacksAndMessages(null)
         joined = false
+        busy = false
         attempts = 0
-        scheduled = true
         Prefs.setRunning(this, true)
-        handler.post(tickRunnable)
+        handler.post(loopRunnable)
         Log.i(TAG, "Click loop started")
     }
 
     fun stopLoop() {
         Prefs.setRunning(this, false)
-        scheduled = false
-        handler.removeCallbacks(tickRunnable)
+        busy = false
+        handler.removeCallbacksAndMessages(null)
         Log.i(TAG, "Click loop stopped")
     }
 
-    private fun tryClick() {
+    private fun stillRunning(): Boolean = Prefs.isRunning(this) && !joined
+
+    private fun runCycle() {
+        if (!stillRunning() || busy) return
+        busy = true
+
         val root = rootInActiveWindow
         if (root == null) {
-            Log.w(TAG, "No active window root")
+            Log.w(TAG, "No active window — keep Chrome on the campaign page")
+            busy = false
+            scheduleNextRetry()
             return
         }
 
-        try {
-            if (joinedAlready(root)) {
-                onJoined()
-                return
-            }
-
-            val joinNode = NodeFinder.findJoinQueueNode(root)
-            if (joinNode == null) {
-                Log.i(TAG, "Join Queue control not visible")
-                return
-            }
-
-            attempts += 1
-            val clicked = NodeFinder.click(joinNode)
-            Log.i(TAG, "Attempt $attempts click=$clicked")
-
-            handler.postDelayed({
-                val after = rootInActiveWindow
-                if (after == null) return@postDelayed
-                try {
-                    val stillHasJoin = NodeFinder.findJoinQueueNode(after) != null
-                    if (!stillHasJoin || joinedAlready(after)) {
-                        // After a real click, Join Queue disappearing is the success signal
-                        onJoined()
-                    }
-                } finally {
-                    after.recycle()
-                }
-            }, 1500)
-        } finally {
-            root.recycle()
+        // Already joined from a previous attempt that we haven't notified yet
+        if (NodeFinder.looksJoined(root)) {
+            Log.i(TAG, "Success UI already visible — confirming")
+            confirmSuccessThenFinish()
+            return
         }
+
+        val joinNode = NodeFinder.findJoinQueueNode(root)
+        if (joinNode == null) {
+            Log.i(TAG, "Join Queue not visible yet — retry later")
+            busy = false
+            scheduleNextRetry()
+            return
+        }
+
+        attempts += 1
+        val clicked = NodeFinder.click(joinNode)
+        Log.i(TAG, "Attempt $attempts: clicked=$clicked — waiting to verify success")
+
+        // After every click: wait for UI to settle, then verify.
+        // Failed joins are normal; only stop when success is confirmed.
+        handler.postDelayed({
+            if (!stillRunning()) {
+                busy = false
+                return@postDelayed
+            }
+            verifyAfterClick()
+        }, POST_CLICK_CHECK_MS)
     }
 
-    private fun joinedAlready(root: AccessibilityNodeInfo?): Boolean {
-        if (root == null) return false
-        val hasJoin = NodeFinder.findJoinQueueNode(root) != null
-        val hasSuccess = NodeFinder.hasSuccessText(root)
-        return !hasJoin && hasSuccess
+    private fun verifyAfterClick() {
+        val root = rootInActiveWindow
+        if (NodeFinder.looksJoined(root)) {
+            Log.i(TAG, "Attempt $attempts: success signal seen — confirming")
+            confirmSuccessThenFinish()
+            return
+        }
+
+        val stillHasJoin = NodeFinder.hasJoinQueue(root)
+        if (stillHasJoin) {
+            Log.i(TAG, "Attempt $attempts: Join Queue still present — join failed, will retry")
+        } else {
+            Log.i(
+                TAG,
+                "Attempt $attempts: Join Queue temporarily gone but no success text — treating as failed"
+            )
+        }
+
+        busy = false
+        scheduleNextRetry()
+    }
+
+    private fun confirmSuccessThenFinish() {
+        // Second read after a short delay so a flicker cannot stop the loop.
+        handler.postDelayed({
+            if (!stillRunning()) {
+                busy = false
+                return@postDelayed
+            }
+            if (NodeFinder.looksJoined(rootInActiveWindow)) {
+                onJoined()
+            } else {
+                Log.i(TAG, "Success not confirmed on second check — keep retrying")
+                busy = false
+                scheduleNextRetry()
+            }
+        }, CONFIRM_SUCCESS_MS)
+    }
+
+    private fun scheduleNextRetry() {
+        if (!stillRunning()) return
+        val delay = 7000L + Random.nextLong(0, 6001)
+        Log.i(TAG, "Next Join Queue attempt in ${delay}ms (attempts so far=$attempts)")
+        handler.postDelayed(loopRunnable, delay)
     }
 
     private fun onJoined() {
         if (joined) return
         joined = true
+        busy = false
         stopLoop()
-        Log.i(TAG, "Joined detected after $attempts attempts")
-
+        Log.i(TAG, "Join confirmed after $attempts attempts — notifying")
         Notifier.showJoined(this)
-
-        Thread {
-            try {
-                EmailSender.sendJoinedEmail(
-                    gmailUser = Prefs.gmailUser(this),
-                    gmailAppPassword = Prefs.gmailAppPassword(this),
-                    notifyEmail = Prefs.notifyEmail(this),
-                    campaignUrl = Prefs.campaignUrl(this),
-                    attempts = attempts
-                )
-                Log.i(TAG, "Success email sent")
-            } catch (t: Throwable) {
-                Log.e(TAG, "Email failed: ${t.message}", t)
-            } finally {
-                stopService(Intent(this, ClickerForegroundService::class.java))
-            }
-        }.start()
+        stopService(Intent(this, ClickerForegroundService::class.java))
     }
 }

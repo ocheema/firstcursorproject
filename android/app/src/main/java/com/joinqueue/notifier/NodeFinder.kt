@@ -4,25 +4,41 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 object NodeFinder {
     private val joinPattern = Regex("join\\s*queue", RegexOption.IGNORE_CASE)
-    private val successPattern =
-        Regex("joined|in\\s*queue|already\\s*in\\s*queue|queue\\s*joined", RegexOption.IGNORE_CASE)
+
+    // Positive success signals only — never treat "button missing" alone as success.
+    private val successPattern = Regex(
+        "leave\\s*queue|in\\s*the\\s*queue|already\\s*in\\s*(the\\s*)?queue|" +
+            "you.?re\\s*in\\s*(the\\s*)?queue|joined\\s*the\\s*queue|successfully\\s*joined|" +
+            "queue\\s*joined|waiting\\s*in\\s*(the\\s*)?queue",
+        RegexOption.IGNORE_CASE
+    )
 
     fun findJoinQueueNode(root: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
         if (root == null) return null
         return findFirst(root) { node ->
-            val text = ((node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: ""))
-                .trim()
-            joinPattern.containsMatchIn(text) && (node.isClickable || node.isEnabled)
+            val text = nodeLabel(node)
+            joinPattern.containsMatchIn(text) && node.isVisibleToUser
         }?.let { makeClickable(it) }
     }
+
+    fun hasJoinQueue(root: AccessibilityNodeInfo?): Boolean =
+        findJoinQueueNode(root) != null
 
     fun hasSuccessText(root: AccessibilityNodeInfo?): Boolean {
         if (root == null) return false
         return findFirst(root) { node ->
-            val text = ((node.text?.toString() ?: "") + " " + (node.contentDescription?.toString() ?: ""))
-                .trim()
+            val text = nodeLabel(node)
             successPattern.containsMatchIn(text) && !joinPattern.containsMatchIn(text)
         } != null
+    }
+
+    /**
+     * True only when Join Queue is gone AND a positive success label is visible.
+     * A missing button alone is NOT success (common right after a failed click).
+     */
+    fun looksJoined(root: AccessibilityNodeInfo?): Boolean {
+        if (root == null) return false
+        return !hasJoinQueue(root) && hasSuccessText(root)
     }
 
     fun click(node: AccessibilityNodeInfo): Boolean {
@@ -34,6 +50,13 @@ object NodeFinder {
             current = current.parent
         }
         return node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    }
+
+    private fun nodeLabel(node: AccessibilityNodeInfo): String {
+        return listOfNotNull(
+            node.text?.toString(),
+            node.contentDescription?.toString()
+        ).joinToString(" ").trim()
     }
 
     private fun makeClickable(node: AccessibilityNodeInfo): AccessibilityNodeInfo {

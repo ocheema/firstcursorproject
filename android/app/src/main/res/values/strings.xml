@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">JoinQueue Notifier</string>
-    <string name="accessibility_service_description">Clicks Join Queue on the Feather campaign page about every 10 seconds and notifies you by email when it joins.</string>
+    <string name="accessibility_service_description">Clicks Join Queue on the Feather campaign page about every 10 seconds and shows a notification when it joins.</string>
     <string name="notification_channel_name">Join Queue</string>
     <string name="notification_channel_desc">Status for the Join Queue clicker</string>
     <string name="fg_notification_title">Join Queue clicker running</string>
     <string name="fg_notification_text">Looking for Join Queue every ~10 seconds</string>
     <string name="joined_notification_title">Joined Feather queue</string>
-    <string name="joined_notification_text">Success email sent (or attempted).</string>
+    <string name="joined_notification_text">Successfully joined the Feather queue.</string>
 </resources>

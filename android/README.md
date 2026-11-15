@@ -4,30 +4,26 @@ Personal sideload app that runs fully on your phone:
 
 1. Uses an **Accessibility Service** to tap **Join Queue** in Chrome
 2. Retries every **~10 seconds (±3 seconds)**
-3. Sends a **Gmail** email + local notification when it joins
+3. Shows a **phone notification** when it joins
 
-## Install the APK (no Android Studio needed)
+## Download APK
 
-1. On your phone, open this link and download the file:  
-   https://github.com/ocheema/firstcursorproject/raw/cursor/joinqueue-android-e788/android/dist/JoinQueueNotifier-debug.apk
-2. Allow installs from unknown sources / this browser when prompted
-3. Open the downloaded APK and install **JoinQueue Notifier**
+On your phone, open this link and download the file:  
+https://github.com/ocheema/firstcursorproject/raw/cursor/joinqueue-android-e788/android/dist/JoinQueueNotifier-debug.apk
 
-## First-time setup on the phone
+Allow installs from unknown sources when prompted, then install **JoinQueue Notifier**.
+
+## First-time setup
 
 1. Open **JoinQueue Notifier**
-2. Enter:
-   - Campaign URL (pre-filled)
-   - Gmail address
-   - Gmail [App Password](https://myaccount.google.com/apppasswords)
-   - Notify email
-3. Tap **Save settings**
-4. Tap **Enable Accessibility access** → turn on **JoinQueue Notifier**
-5. Tap **Open campaign in browser** and log into Feather in Chrome
-6. Return to the app → **Start clicker**
-7. Keep Chrome on the campaign page in the foreground
+2. If Accessibility is blocked (“controlled by restricted settings”):
+   - **Settings → Apps → JoinQueue Notifier → ⋮ → Allow restricted settings**
+3. Tap **Enable Accessibility access** → turn on **JoinQueue Notifier**
+4. Tap **Open campaign in browser** and log into Feather in Chrome
+5. Return to the app → **Start clicker**
+6. Keep Chrome on the campaign page in the foreground
 
-When it joins, you get a phone notification and an email. The clicker then stops.
+When it joins, you get a phone notification and the clicker stops.
 
 ## Build from source (optional)
 
@@ -42,5 +38,4 @@ cd android
 
 - Personal use / sideload only — not Play Store packaged
 - Accessibility permission is required so the app can tap Join Queue in Chrome
-- Do not force-stop the app while it is running
-- Some phones may pause background work; leave Chrome visible while waiting
+- Leave Chrome visible while waiting; some phones pause background automation

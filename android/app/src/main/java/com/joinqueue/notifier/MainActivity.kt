@@ -38,13 +38,11 @@ class MainActivity : AppCompatActivity() {
 
         binding.openCampaignButton.setOnClickListener {
             saveFields()
-            val url = Prefs.campaignUrl(this)
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Prefs.campaignUrl(this))))
         }
 
         binding.startButton.setOnClickListener {
             saveFields()
-            if (!validateSettings()) return@setOnClickListener
             if (!isAccessibilityEnabled()) {
                 Toast.makeText(
                     this,
@@ -82,27 +80,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadFields() {
         binding.campaignUrl.setText(Prefs.campaignUrl(this))
-        binding.gmailUser.setText(Prefs.gmailUser(this))
-        binding.gmailAppPassword.setText(Prefs.gmailAppPassword(this))
-        binding.notifyEmail.setText(Prefs.notifyEmail(this))
     }
 
     private fun saveFields() {
         Prefs.save(
             this,
-            campaignUrl = binding.campaignUrl.text?.toString().orEmpty().ifBlank { Prefs.DEFAULT_URL },
-            gmailUser = binding.gmailUser.text?.toString().orEmpty(),
-            gmailAppPassword = binding.gmailAppPassword.text?.toString().orEmpty(),
-            notifyEmail = binding.notifyEmail.text?.toString().orEmpty().ifBlank { Prefs.DEFAULT_NOTIFY }
+            campaignUrl = binding.campaignUrl.text?.toString().orEmpty().ifBlank { Prefs.DEFAULT_URL }
         )
-    }
-
-    private fun validateSettings(): Boolean {
-        if (Prefs.gmailUser(this).isBlank() || Prefs.gmailAppPassword(this).isBlank()) {
-            Toast.makeText(this, "Enter Gmail user and App Password", Toast.LENGTH_LONG).show()
-            return false
-        }
-        return true
     }
 
     private fun refreshStatus() {

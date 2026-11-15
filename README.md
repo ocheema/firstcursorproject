@@ -1,15 +1,18 @@
 # JoinQueue Notifier
 
-Clicks **Join Queue** on a Feather campaign page every ~10 seconds (±3 seconds) and emails you when it joins.
+Clicks **Join Queue** on a Feather campaign page every ~10 seconds (±3 seconds) and notifies you when a join actually succeeds.
 
 ## Android (runs fully on your phone)
 
 See [`android/README.md`](android/README.md).
 
-1. Sideload `JoinQueueNotifier-debug.apk`
-2. Enable Accessibility for the app
-3. Enter Gmail App Password settings
-4. Open the campaign in Chrome and tap **Start clicker**
+**Download APK:**  
+https://github.com/ocheema/firstcursorproject/raw/cursor/joinqueue-android-e788/android/dist/JoinQueueNotifier-debug.apk
+
+1. Sideload the APK
+2. Allow restricted settings → enable Accessibility
+3. Open the campaign in Chrome and tap **Start clicker**
+4. Keep Chrome on the page — many clicks may fail; the app verifies success after each try and only notifies when join really works
 
 ## Desktop (Node + Playwright)
 
@@ -20,5 +23,3 @@ npm install
 cp .env.example .env   # set GMAIL_USER, GMAIL_APP_PASSWORD
 npm start
 ```
-
-Details: complete SSO in the Chromium window on first run; leave it running until the success email arrives.
